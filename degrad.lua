@@ -2291,12 +2291,17 @@ local Library do
                     BackgroundColor3 = FromRGB(27, 25, 29)
                 })  Items["MainFrame"]:AddToTheme({BackgroundColor3 = "Background"})
 
-                if IsMobile then 
+                if IsMobile or (Data and (Data.Mode == "mobile" or Data.mode == "mobile")) then 
                     Instances:Create("UIScale", {
                         Parent = Items["MainFrame"].Instance,
                         Name = "\0",
-                        Scale = 0.699999988079071
-                    })                    
+                        Scale = 0.72
+                    })            
+                    -- Si el modo mobile fue pedido explícitamente, ajustamos posición
+                    if Data and (Data.Mode == "mobile" or Data.mode == "mobile") then
+                        Items["MainFrame"].Instance.AnchorPoint = Vector2New(0.5, 0.5)
+                        Items["MainFrame"].Instance.Position = UDim2New(0.5, 0, 0.55, 0)
+                    end
                 end
 
                 Items["MainFrame"]:MakeResizeable(Vector2New(Items["MainFrame"].Instance.AbsoluteSize.X, Items["MainFrame"].Instance.AbsoluteSize.Y), Vector2New(9999, 9999), OriginalSizes)
@@ -2589,8 +2594,63 @@ local Library do
                 })  Items["CloseIcon"]:AddToTheme({ImageColor3 = "Text"})        
                 
                 Items["CloseButton"]:Connect("MouseButton1Down", function()
-                    Library:Unload()
+                        Library:Unload()
                 end)
+                
+                    -- Minimize button + floating restore for mobile mode (activated via Window({Mode = "mobile"}))
+                    if Data and (Data.Mode == "mobile" or Data.mode == "mobile") then
+                        Items["MinimizeButton"] = Instances:Create("TextButton", {
+                            Parent = Items["MainFrame"].Instance,
+                            Name = "\0",
+                            FontFace = Library.Font,
+                            TextColor3 = FromRGB(0, 0, 0),
+                            Text = "–",
+                            AutoButtonColor = false,
+                            AnchorPoint = Vector2New(1, 0),
+                            BorderSizePixel = 0,
+                            BackgroundTransparency = 0.2,
+                            Position = UDim2New(1, -56, 0, 11),
+                            Size = UDim2New(0, 32, 0, 32),
+                            ZIndex = 2,
+                            TextSize = 20,
+                            BackgroundColor3 = Library.Theme.Element or FromRGB(27, 26, 29)
+                        })
+                        Items["MinimizeButton"]:AddToTheme({BackgroundColor3 = "Element"})
+                        Instances:Create("UICorner", {Parent = Items["MinimizeButton"].Instance, Name = "\0", CornerRadius = UDimNew(0, 4)})
+                    
+                        Items["MinimizeButton"]:Connect("MouseButton1Down", function()
+                            Window:SetOpen(false)
+                            Items["MainFrame"].Instance.Visible = false
+                        
+                            -- Crear botón flotante circular si no existe
+                            if not Library._MobileFloating then
+                                local parent = Library.Holder and Library.Holder.Instance or gethui()
+                                Library._MobileFloating = Instances:Create("ImageButton", {
+                                    Parent = parent,
+                                    Name = "\0",
+                                    Size = UDim2New(0, 56, 0, 56),
+                                    AnchorPoint = Vector2New(0.5, 0),
+                                    Position = UDim2New(0.5, 0, 0, 12),
+                                    BackgroundTransparency = 0,
+                                    BackgroundColor3 = Library.Theme.Background or FromRGB(20, 20, 22),
+                                    Image = "rbxassetid://" .. (Window.Logo or "0"),
+                                    ZIndex = 200,
+                                    AutoButtonColor = true,
+                                    ImageColor3 = Library.Theme.Text or FromRGB(240, 240, 240),
+                                    Active = true,
+                                    ClipsDescendants = false
+                                })
+                                Instances:Create("UICorner", {Parent = Library._MobileFloating.Instance, Name = "\0", CornerRadius = UDimNew(1, 0)})
+                            
+                                Library._MobileFloating:Connect("MouseButton1Down", function()
+                                    Window:SetOpen(true)
+                                    Items["MainFrame"].Instance.Visible = true
+                                    Library._MobileFloating:Clean()
+                                    Library._MobileFloating = nil
+                                end)
+                            end
+                        end)
+                    end
 
                 Items["CloseIconAccent"] = Instances:Create("Frame", {
                     Parent = Items["CloseButton"].Instance,
