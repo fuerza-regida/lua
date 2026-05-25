@@ -374,17 +374,13 @@ function Degrad:CreateWindow(options)
     ScreenGui.Parent = PlayerGui
     SafeParent(ScreenGui)
     
-    -- Setup Core GUI Screen
-    ScreenGui.Parent = PlayerGui
-    SafeParent(ScreenGui)
-    
     -- Window State Tracker
     local isMinimized = false
     local isMaximized = false
     local normalSize = UDim2.new(0, 560, 0, 390)
     local normalPos = UDim2.new(0.5, -280, 0.5, -195)
-    local maximizedSize = UDim2.new(0, 800, 0, 550)
-    local maximizedPos = UDim2.new(0.5, -400, 0.5, -275)
+    local maximizedSize = UDim2.new(1, 0, 1, 0)
+    local maximizedPos = UDim2.new(0, 0, 0, 0)
     local lastNormalPos = normalPos
     
     -- Mobile Toggle button (Floating / Draggable / Circular)
@@ -515,16 +511,17 @@ function Degrad:CreateWindow(options)
     -- Window Actions Toggle States
     local function ToggleMinimize()
         isMinimized = not isMinimized
-        local targetHeight = isMinimized and 42 or (isMaximized and 550 or 390)
-        local targetSize = UDim2.new(0, isMaximized and 800 or 560, 0, targetHeight)
+        local targetSize
         
         Actions:WaitForChild("Minimize").Text = isMinimized and "+" or "−"
         
         if isMinimized then
+            targetSize = isMaximized and UDim2.new(1, 0, 0, 42) or UDim2.new(0, 560, 0, 42)
             MainFrame:WaitForChild("Sidebar").Visible = false
             MainFrame:WaitForChild("ContentContainer").Visible = false
             Header:WaitForChild("HeaderDivider").Visible = false
         else
+            targetSize = isMaximized and UDim2.new(1, 0, 1, 0) or normalSize
             task.spawn(function()
                 task.wait(0.15)
                 if not isMinimized then
@@ -540,17 +537,20 @@ function Degrad:CreateWindow(options)
     local function ToggleMaximize()
         if isMinimized then return end
         isMaximized = not isMaximized
-        local targetSize, targetPos
+        local targetSize, targetPos, targetCornerRadius
         if isMaximized then
             lastNormalPos = MainFrame.Position
-            targetSize = maximizedSize
-            targetPos = maximizedPos
+            targetSize = UDim2.new(1, 0, 1, 0)
+            targetPos = UDim2.new(0, 0, 0, 0)
+            targetCornerRadius = UDim.new(0, 0)
         else
             targetSize = normalSize
             targetPos = lastNormalPos
+            targetCornerRadius = UDim.new(0, 8)
         end
         
         QuickTween(MainFrame, 0.25, {Size = targetSize, Position = targetPos})
+        QuickTween(MainCorner, 0.25, {CornerRadius = targetCornerRadius})
     end
     
     local function CreateHeaderButton(text, xOffset, hoverColor, callback)
