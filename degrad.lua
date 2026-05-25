@@ -2605,14 +2605,15 @@ local Library do
                             AutoButtonColor = true,
                             AnchorPoint = Vector2New(1, 0),
                             BorderSizePixel = 0,
-                            BackgroundTransparency = 1,
+                            BackgroundTransparency = 0,
+                            BackgroundColor3 = Library.Theme.Element or FromRGB(27, 26, 29),
                             Position = UDim2New(1, -56, 0, 11),
                             Size = UDim2New(0, 32, 0, 32),
-                            ZIndex = 2,
-                            Image = "rbxassetid://" .. (Window.Logo or "0"),
-                            ImageColor3 = Library.Theme.Text or FromRGB(240, 240, 240)
+                            ZIndex = 2
                         })
                         Instances:Create("UICorner", {Parent = Items["MinimizeButton"].Instance, Name = "\0", CornerRadius = UDimNew(1, 0)})
+                        local _minIcon = (tostring(Window.Logo or "") :match("%d+")) and ("rbxassetid://" .. tostring(Window.Logo)) or "rbxassetid://81598136527047"
+                        Instances:Create("ImageLabel", {Parent = Items["MinimizeButton"].Instance, Name = "\0", Size = UDim2New(0.7, 0, 0.7, 0), Position = UDim2New(0.5, 0, 0.5, 0), AnchorPoint = Vector2New(0.5, 0.5), Image = _minIcon, BackgroundTransparency = 1, ZIndex = 3})
                     
                         Items["MinimizeButton"]:Connect("MouseButton1Down", function()
                             Window:SetOpen(false)
@@ -2628,16 +2629,16 @@ local Library do
                                     AnchorPoint = Vector2New(0.5, 0),
                                     Position = UDim2New(0.5, 0, 0, 12),
                                     BackgroundTransparency = 0,
-                                    BackgroundColor3 = Library.Theme.Background or FromRGB(20, 20, 22),
-                                    Image = "rbxassetid://" .. (Window.Logo or "0"),
+                                    BackgroundColor3 = Library.Theme.Element or FromRGB(27, 26, 29),
                                     ZIndex = 200,
                                     AutoButtonColor = true,
-                                    ImageColor3 = Library.Theme.Text or FromRGB(240, 240, 240),
                                     Active = true,
                                     ClipsDescendants = false
                                 })
                                 Instances:Create("UICorner", {Parent = Library._MobileFloating.Instance, Name = "\0", CornerRadius = UDimNew(1, 0)})
-                            
+                                local _floatIcon = (tostring(Window.Logo or "") :match("%d+")) and ("rbxassetid://" .. tostring(Window.Logo)) or "rbxassetid://81598136527047"
+                                Instances:Create("ImageLabel", {Parent = Library._MobileFloating.Instance, Name = "\0", Size = UDim2New(0.8, 0, 0.8, 0), Position = UDim2New(0.5, 0, 0.5, 0), AnchorPoint = Vector2New(0.5, 0.5), Image = _floatIcon, BackgroundTransparency = 1, ZIndex = 201})
+                                
                                 Library._MobileFloating:Connect("MouseButton1Down", function()
                                     Window:SetOpen(true)
                                     Items["MainFrame"].Instance.Visible = true
