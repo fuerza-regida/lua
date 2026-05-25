@@ -2599,24 +2599,20 @@ local Library do
                 
                     -- Minimize button + floating restore for mobile mode (activated via Window({Mode = "mobile"}))
                     if Data and (Data.Mode == "mobile" or Data.mode == "mobile") then
-                        Items["MinimizeButton"] = Instances:Create("TextButton", {
+                        Items["MinimizeButton"] = Instances:Create("ImageButton", {
                             Parent = Items["MainFrame"].Instance,
                             Name = "\0",
-                            FontFace = Library.Font,
-                            TextColor3 = FromRGB(0, 0, 0),
-                            Text = "–",
-                            AutoButtonColor = false,
+                            AutoButtonColor = true,
                             AnchorPoint = Vector2New(1, 0),
                             BorderSizePixel = 0,
-                            BackgroundTransparency = 0.2,
+                            BackgroundTransparency = 1,
                             Position = UDim2New(1, -56, 0, 11),
                             Size = UDim2New(0, 32, 0, 32),
                             ZIndex = 2,
-                            TextSize = 20,
-                            BackgroundColor3 = Library.Theme.Element or FromRGB(27, 26, 29)
+                            Image = "rbxassetid://" .. (Window.Logo or "0"),
+                            ImageColor3 = Library.Theme.Text or FromRGB(240, 240, 240)
                         })
-                        Items["MinimizeButton"]:AddToTheme({BackgroundColor3 = "Element"})
-                        Instances:Create("UICorner", {Parent = Items["MinimizeButton"].Instance, Name = "\0", CornerRadius = UDimNew(0, 4)})
+                        Instances:Create("UICorner", {Parent = Items["MinimizeButton"].Instance, Name = "\0", CornerRadius = UDimNew(1, 0)})
                     
                         Items["MinimizeButton"]:Connect("MouseButton1Down", function()
                             Window:SetOpen(false)
