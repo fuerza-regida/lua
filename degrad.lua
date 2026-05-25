@@ -386,7 +386,7 @@ function Degrad:CreateWindow(options)
     local ElementsRegistry = {}
     
     -- Pre-declaración de componentes para que ToggleMinimize y ToggleUI tengan acceso
-    local Sidebar, ContentHolder, HeaderDivider, MinimizeBtn
+    local Sidebar, ContentHolder, HeaderDivider, MinimizeBtn, ToggleUI
     local isMinimized = false
     local isMaximized = false
     
@@ -602,7 +602,7 @@ function Degrad:CreateWindow(options)
             end
         end)
         
-        btn.MouseButton1Click:Connect(callback)
+        btn.Activated:Connect(callback)
         return btn
     end
 
@@ -771,10 +771,11 @@ function Degrad:CreateWindow(options)
     end)
     
     -- Toggle UI Visibility Mechanics
-    local function ToggleUI()
+    ToggleUI = function()
         Degrad.Open = not Degrad.Open
         local targetTrans = Degrad.Open and 0 or 1
         
+        MainFrame.Active = Degrad.Open -- Evita bloquear clics en el botón flotante mientras se cierra
         MainFrame.Visible = true
         local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
         
