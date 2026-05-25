@@ -383,15 +383,17 @@ function Degrad:CreateWindow(options)
         end
     end
     
-    local ElementsRegistry = {} -- Flat registry to bind flag -> element update mechanisms
+    local ElementsRegistry = {}
+    
+    -- Pre-declaración de componentes para que ToggleMinimize y ToggleUI tengan acceso
+    local Sidebar, ContentHolder, HeaderDivider, MinimizeBtn
+    local isMinimized = false
+    local isMaximized = false
     
     -- Setup Core GUI Screen
     ScreenGui.Parent = PlayerGui
     SafeParent(ScreenGui)
     
-    -- Window State Tracker
-    local isMinimized = false
-    local isMaximized = false
     local normalSize = UDim2.new(0, 560, 0, 390)
     local normalPos = UDim2.new(0.5, -280, 0.5, -195)
     local maximizedSize = UDim2.new(1, 0, 1, 0)
@@ -528,21 +530,23 @@ function Degrad:CreateWindow(options)
         isMinimized = not isMinimized
         local targetSize
         
-        Actions:WaitForChild("Minimize").Text = isMinimized and "+" or "−"
+        if MinimizeBtn then
+            MinimizeBtn.Text = isMinimized and "+" or "−"
+        end
         
         if isMinimized then
             targetSize = isMaximized and UDim2.new(1, 0, 0, 42) or UDim2.new(0, 560, 0, 42)
-            MainFrame:WaitForChild("Sidebar").Visible = false
-            MainFrame:WaitForChild("ContentContainer").Visible = false
-            Header:WaitForChild("HeaderDivider").Visible = false
+            if Sidebar then Sidebar.Visible = false end
+            if ContentHolder then ContentHolder.Visible = false end
+            if HeaderDivider then HeaderDivider.Visible = false end
         else
             targetSize = isMaximized and UDim2.new(1, 0, 1, 0) or normalSize
             task.spawn(function()
                 task.wait(0.15)
                 if not isMinimized then
-                    MainFrame:WaitForChild("Sidebar").Visible = true
-                    MainFrame:WaitForChild("ContentContainer").Visible = true
-                    Header:WaitForChild("HeaderDivider").Visible = true
+                    if Sidebar then Sidebar.Visible = true end
+                    if ContentHolder then ContentHolder.Visible = true end
+                    if HeaderDivider then HeaderDivider.Visible = true end
                 end
             end)
         end
@@ -602,19 +606,19 @@ function Degrad:CreateWindow(options)
         return btn
     end
 
-    local MinimizeBtn = CreateHeaderButton("−", 0, nil, function()
+    MinimizeBtn = CreateHeaderButton("−", 0, nil, function()
         if mode == "Mobile" then
             ToggleUI()
         else
             ToggleMinimize()
         end
     end)
-    local MaximizeBtn = CreateHeaderButton("⬜", 30, nil, ToggleMaximize)
-    local CloseBtn = CreateHeaderButton("✕", 60, Color3.fromRGB(180, 50, 50), function()
+    local MaximizeBtnObj = CreateHeaderButton("⬜", 30, nil, ToggleMaximize)
+    local CloseBtnObj = CreateHeaderButton("✕", 60, Color3.fromRGB(180, 50, 50), function()
         Degrad:Destroy()
     end)
     
-    local HeaderDivider = Instance.new("Frame")
+    HeaderDivider = Instance.new("Frame")
     HeaderDivider.Name = "HeaderDivider"
     HeaderDivider.Size = UDim2.new(1, 0, 0, 1)
     HeaderDivider.Position = UDim2.new(0, 0, 1, -1)
@@ -627,7 +631,7 @@ function Degrad:CreateWindow(options)
     end)
     
     -- Body Split Panel (Sidebar Left / Contents Right)
-    local Sidebar = Instance.new("Frame")
+    Sidebar = Instance.new("Frame")
     Sidebar.Name = "Sidebar"
     Sidebar.Size = UDim2.new(0, 160, 1, -42)
     Sidebar.Position = UDim2.new(0, 0, 0, 42)
@@ -687,7 +691,7 @@ function Degrad:CreateWindow(options)
     PillBorder.Parent = SidebarIndicator
     
     -- Content container
-    local ContentHolder = Instance.new("Frame")
+    ContentHolder = Instance.new("Frame")
     ContentHolder.Name = "ContentContainer"
     ContentHolder.Size = UDim2.new(1, -161, 1, -42)
     ContentHolder.Position = UDim2.new(0, 161, 0, 42)
