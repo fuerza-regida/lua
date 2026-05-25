@@ -109,12 +109,12 @@ local function QuickTween(instance, duration, properties, easingStyle, easingDir
     return tween
 end
 -- Smooth Drag Support
-local function MakeDraggable(dragFrame, targetFrame)
+local function MakeDraggable(dragFrame, targetFrame, canDragCheck)
     local dragging = false
     local dragInput, dragStart, startPos
     
     dragFrame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        if (not canDragCheck or canDragCheck()) and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
             dragging = true
             dragStart = input.Position
             startPos = targetFrame.Position
@@ -135,6 +135,10 @@ local function MakeDraggable(dragFrame, targetFrame)
     
     UserInputService.InputChanged:Connect(function(input)
         if input == dragInput and dragging then
+            if canDragCheck and not canDragCheck() then
+                dragging = false
+                return
+            end
             local delta = input.Position - dragStart
             local targetPos = UDim2.new(
                 startPos.X.Scale,
@@ -370,43 +374,103 @@ function Degrad:CreateWindow(options)
     ScreenGui.Parent = PlayerGui
     SafeParent(ScreenGui)
     
-    -- Mobile Toggle button
-    local MobileBtn = Instance.new("TextButton")
+    -- Setup Core GUI Screen
+    ScreenGui.Parent = PlayerGui
+    SafeParent(ScreenGui)
+    
+    -- Window State Tracker
+    local isMinimized = false
+    local isMaximized = false
+    local normalSize = UDim2.new(0, 560, 0, 390)
+    local normalPos = UDim2.new(0.5, -280, 0.5, -195)
+    local maximizedSize = UDim2.new(0, 800, 0, 550)
+    local maximizedPos = UDim2.new(0.5, -400, 0.5, -275)
+    local lastNormalPos = normalPos
+    
+    -- Mobile Toggle button (Floating / Draggable / Circular)
+    local MobileBtn = Instance.new("ImageButton")
     MobileBtn.Name = "MobileToggle"
-    MobileBtn.Size = UDim2.new(0, 110, 0, 30)
-    MobileBtn.Position = UDim2.new(0.05, 0, 0.05, 0)
-    MobileBtn.BackgroundColor3 = Degrad.Theme.Background
+    MobileBtn.Size = UDim2.new(0, 50, 0, 50)
+    MobileBtn.Position = UDim2.new(0.05, 0, 0.15, 0)
+    MobileBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
     MobileBtn.BorderSizePixel = 0
-    MobileBtn.Text = showText
-    MobileBtn.TextColor3 = Degrad.Theme.Text
-    MobileBtn.Font = Degrad.Theme.FontBold
-    MobileBtn.TextSize = 12
-    MobileBtn.ZIndex = 5
+    MobileBtn.ZIndex = 100
     MobileBtn.Visible = false
     MobileBtn.Parent = ScreenGui
     
     local MobileBtnCorner = Instance.new("UICorner")
-    MobileBtnCorner.CornerRadius = UDim.new(0, 6)
+    MobileBtnCorner.CornerRadius = UDim.new(1, 0) -- Circle
     MobileBtnCorner.Parent = MobileBtn
     
     local MobileBtnStroke = Instance.new("UIStroke")
-    MobileBtnStroke.Thickness = 1
-    MobileBtnStroke.Color = Degrad.Theme.Border
+    MobileBtnStroke.Thickness = 1.5
+    MobileBtnStroke.Color = Color3.fromRGB(45, 45, 45)
     MobileBtnStroke.Parent = MobileBtn
     
-    -- Check if touch device for mobile button visibility
-    if UserInputService.TouchEnabled then
+    local MobileIconLabel = Instance.new("ImageLabel")
+    MobileIconLabel.Size = UDim2.new(0, 26, 0, 26)
+    MobileIconLabel.Position = UDim2.new(0.5, -13, 0.5, -13)
+    MobileIconLabel.Image = options.MobileIcon or "rbxassetid://10723424505"
+    MobileIconLabel.ImageColor3 = Degrad.Theme.Accent
+    MobileIconLabel.BackgroundTransparency = 1
+    MobileIconLabel.Parent = MobileBtn
+    
+    -- Check if touch device or mobile toggle enabled
+    if UserInputService.TouchEnabled or options.MobileToggle then
         MobileBtn.Visible = true
     end
     
-    -- Main Window Shell
-    local MainFrame = Instance.new("Frame")
+    -- Smooth Mobile Button Dragging & Click Magnitude check
+    local mobileDragging = false
+    local mobileDragInput, mobileDragStart, mobileStartPos
+    local dragThreshold = 8
+    local wasDragged = false
+    
+    MobileBtn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            mobileDragging = true
+            wasDragged = false
+            mobileDragStart = input.Position
+            mobileStartPos = MobileBtn.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    mobileDragging = false
+                end
+            end)
+        end
+    end)
+    
+    MobileBtn.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            mobileDragInput = input
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if input == mobileDragInput and mobileDragging then
+            local delta = input.Position - mobileDragStart
+            if delta.Magnitude > dragThreshold then
+                wasDragged = true
+            end
+            local targetPos = UDim2.new(
+                mobileStartPos.X.Scale,
+                mobileStartPos.X.Offset + delta.X,
+                mobileStartPos.Y.Scale,
+                mobileStartPos.Y.Offset + delta.Y
+            )
+            MobileBtn.Position = targetPos
+        end
+    end)
+    
+    -- Main Window Shell (CanvasGroup for perfect 60 FPS fading animations)
+    local MainFrame = Instance.new("CanvasGroup")
     MainFrame.Name = "MainFrame"
-    MainFrame.Size = UDim2.new(0, 560, 0, 390)
-    MainFrame.Position = UDim2.new(0.5, -280, 0.5, -195)
+    MainFrame.Size = normalSize
+    MainFrame.Position = normalPos
     MainFrame.BackgroundColor3 = Degrad.Theme.Background
     MainFrame.BorderSizePixel = 0
-    MainFrame.ClipsDescendants = false
+    MainFrame.ClipsDescendants = true
     MainFrame.Active = true
     MainFrame.Parent = ScreenGui
     
@@ -443,35 +507,102 @@ function Degrad:CreateWindow(options)
     -- Window Actions
     local Actions = Instance.new("Frame")
     Actions.Name = "Actions"
-    Actions.Size = UDim2.new(0, 60, 1, 0)
-    Actions.Position = UDim2.new(1, -70, 0, 0)
+    Actions.Size = UDim2.new(0, 90, 0, 24)
+    Actions.Position = UDim2.new(1, -100, 0.5, -12)
     Actions.BackgroundTransparency = 1
     Actions.Parent = Header
     
-    local Minimize = Instance.new("ImageButton")
-    Minimize.Size = UDim2.new(0, 16, 0, 16)
-    Minimize.Position = UDim2.new(0, 10, 0.5, -8)
-    Minimize.Image = Icons.minus
-    Minimize.ImageColor3 = Degrad.Theme.TextMuted
-    Minimize.BackgroundTransparency = 1
-    Minimize.Parent = Actions
+    -- Window Actions Toggle States
+    local function ToggleMinimize()
+        isMinimized = not isMinimized
+        local targetHeight = isMinimized and 42 or (isMaximized and 550 or 390)
+        local targetSize = UDim2.new(0, isMaximized and 800 or 560, 0, targetHeight)
+        
+        Actions:WaitForChild("Minimize").Text = isMinimized and "+" or "−"
+        
+        if isMinimized then
+            MainFrame:WaitForChild("Sidebar").Visible = false
+            MainFrame:WaitForChild("ContentContainer").Visible = false
+            Header:WaitForChild("HeaderDivider").Visible = false
+        else
+            task.spawn(function()
+                task.wait(0.15)
+                if not isMinimized then
+                    MainFrame:WaitForChild("Sidebar").Visible = true
+                    MainFrame:WaitForChild("ContentContainer").Visible = true
+                    Header:WaitForChild("HeaderDivider").Visible = true
+                end
+            end)
+        end
+        QuickTween(MainFrame, 0.25, {Size = targetSize})
+    end
     
-    local Close = Instance.new("ImageButton")
-    Close.Size = UDim2.new(0, 16, 0, 16)
-    Close.Position = UDim2.new(0, 36, 0.5, -8)
-    Close.Image = Icons.cross
-    Close.ImageColor3 = Degrad.Theme.TextMuted
-    Close.BackgroundTransparency = 1
-    Close.Parent = Actions
+    local function ToggleMaximize()
+        if isMinimized then return end
+        isMaximized = not isMaximized
+        local targetSize, targetPos
+        if isMaximized then
+            lastNormalPos = MainFrame.Position
+            targetSize = maximizedSize
+            targetPos = maximizedPos
+        else
+            targetSize = normalSize
+            targetPos = lastNormalPos
+        end
+        
+        QuickTween(MainFrame, 0.25, {Size = targetSize, Position = targetPos})
+    end
+    
+    local function CreateHeaderButton(text, xOffset, hoverColor, callback)
+        local btn = Instance.new("TextButton")
+        btn.Name = text == "✕" and "Close" or text == "⬜" and "Maximize" or "Minimize"
+        btn.Size = UDim2.new(0, 24, 0, 24)
+        btn.Position = UDim2.new(0, xOffset, 0, 0)
+        btn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        btn.BackgroundTransparency = 1
+        btn.Text = text
+        btn.TextColor3 = Degrad.Theme.TextMuted
+        btn.Font = Degrad.Theme.FontBold
+        btn.TextSize = 14
+        btn.Parent = Actions
+        
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 4)
+        corner.Parent = btn
+        
+        btn.MouseEnter:Connect(function()
+            QuickTween(btn, 0.15, {BackgroundTransparency = 0, TextColor3 = Color3.fromRGB(255, 255, 255)})
+            if hoverColor then
+                QuickTween(btn, 0.15, {BackgroundColor3 = hoverColor})
+            end
+        end)
+        btn.MouseLeave:Connect(function()
+            QuickTween(btn, 0.15, {BackgroundTransparency = 1, TextColor3 = Degrad.Theme.TextMuted})
+            if hoverColor then
+                QuickTween(btn, 0.15, {BackgroundColor3 = Color3.fromRGB(20, 20, 20)})
+            end
+        end)
+        
+        btn.MouseButton1Click:Connect(callback)
+        return btn
+    end
+    local MinimizeBtn = CreateHeaderButton("−", 0, nil, ToggleMinimize)
+    local MaximizeBtn = CreateHeaderButton("⬜", 30, nil, ToggleMaximize)
+    local CloseBtn = CreateHeaderButton("✕", 60, Color3.fromRGB(180, 50, 50), function()
+        Degrad:Destroy()
+    end)
     
     local HeaderDivider = Instance.new("Frame")
+    HeaderDivider.Name = "HeaderDivider"
     HeaderDivider.Size = UDim2.new(1, 0, 0, 1)
     HeaderDivider.Position = UDim2.new(0, 0, 1, -1)
     HeaderDivider.BackgroundColor3 = Degrad.Theme.Border
     HeaderDivider.BorderSizePixel = 0
     HeaderDivider.Parent = Header
     
-    MakeDraggable(Header, MainFrame)
+    MakeDraggable(Header, MainFrame, function()
+        return not isMaximized
+    end)
     
     -- Body Split Panel (Sidebar Left / Contents Right)
     local Sidebar = Instance.new("Frame")
@@ -616,7 +747,6 @@ function Degrad:CreateWindow(options)
     -- Toggle UI Visibility Mechanics
     local function ToggleUI()
         Degrad.Open = not Degrad.Open
-        local targetScale = Degrad.Open and 1 or 0.85
         local targetTrans = Degrad.Open and 0 or 1
         
         MainFrame.Visible = true
@@ -624,30 +754,13 @@ function Degrad:CreateWindow(options)
         
         -- Scaling Transition
         local sizeTween = TweenService:Create(MainFrame, tweenInfo, {
-            Size = Degrad.Open and UDim2.new(0, 560, 0, 390) or UDim2.new(0, 480, 0, 330),
-            Position = Degrad.Open and UDim2.new(0.5, -280, 0.5, -195) or UDim2.new(0.5, -240, 0.5, -165)
+            Size = Degrad.Open and (isMaximized and maximizedSize or normalSize) or UDim2.new(0, 480, 0, 330),
+            Position = Degrad.Open and (isMaximized and maximizedPos or normalPos) or UDim2.new(0.5, -240, 0.5, -165)
         })
         sizeTween:Play()
         
-        -- Fade components recursively
-        local function fadeAll(instance, trans)
-            if instance:IsA("Frame") and instance ~= LoadingFrame then
-                if instance.Name ~= "ActivePill" then
-                    QuickTween(instance, 0.25, {BackgroundTransparency = trans})
-                end
-            elseif instance:IsA("TextLabel") or instance:IsA("TextBox") then
-                QuickTween(instance, 0.25, {TextTransparency = trans})
-            elseif instance:IsA("ImageLabel") or instance:IsA("ImageButton") then
-                QuickTween(instance, 0.25, {ImageTransparency = trans})
-            elseif instance:IsA("UIStroke") then
-                QuickTween(instance, 0.25, {Transparency = trans})
-            end
-            for _, child in ipairs(instance:GetChildren()) do
-                fadeAll(child, trans)
-            end
-        end
-        
-        fadeAll(MainFrame, targetTrans)
+        -- Smooth Group Transparency Tween
+        QuickTween(MainFrame, 0.25, {GroupTransparency = targetTrans})
         
         sizeTween.Completed:Connect(function()
             if not Degrad.Open then
@@ -655,13 +768,6 @@ function Degrad:CreateWindow(options)
             end
         end)
     end
-    
-    -- Binding Actions
-    Minimize.MouseButton1Click:Connect(ToggleUI)
-    Close.MouseButton1Click:Connect(function()
-        Degrad:Destroy()
-    end)
-    MobileBtn.MouseButton1Click:Connect(ToggleUI)
     
     -- Keybind to toggle
     UserInputService.InputBegan:Connect(function(input, processed)
@@ -743,7 +849,8 @@ function Degrad:CreateWindow(options)
         local function Select()
             for _, t in ipairs(Tabs) do
                 t.Page.Visible = false
-                QuickTween(t.BtnLabel, 0.2, {TextColor3 = Degrad.Theme.TextMuted, Font = Degrad.Theme.Font})
+                t.BtnLabel.Font = Degrad.Theme.Font
+                QuickTween(t.BtnLabel, 0.2, {TextColor3 = Degrad.Theme.TextMuted})
                 QuickTween(t.Icon, 0.2, {ImageColor3 = Degrad.Theme.TextMuted})
             end
             
@@ -758,14 +865,14 @@ function Degrad:CreateWindow(options)
             }, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
             
             PageScroll.Visible = true
-            QuickTween(TabBtnLabel, 0.2, {TextColor3 = Degrad.Theme.Text, Font = Degrad.Theme.FontBold})
+            TabBtnLabel.Font = Degrad.Theme.FontBold
+            QuickTween(TabBtnLabel, 0.2, {TextColor3 = Degrad.Theme.Text})
             QuickTween(TabIcon, 0.2, {ImageColor3 = Degrad.Theme.Text})
             
             -- Cool Tab switching fade-in micro-animation
             PageScroll.CanvasPosition = Vector2.new(0, 0)
             local originalPos = UDim2.new(0, 10, 0, 10)
             PageScroll.Position = UDim2.new(0, 10, 0, 20)
-            PageScroll.GroupColor3 = Color3.fromRGB(0, 0, 0) -- Fades through clipping
             
             QuickTween(PageScroll, 0.35, {Position = originalPos}, Enum.EasingStyle.Quad)
         end
