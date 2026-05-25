@@ -11,6 +11,7 @@
     API compatible with Sirius Rayfield (Rebranded as Degrad).
     ========================================================================
 ]]
+
 local Degrad = {
     Flags = {},
     Theme = {
@@ -33,6 +34,7 @@ local Degrad = {
     ConfigFolder = "DegradConfigs",
     ConfigFile = "config.json"
 }
+
 -- Services
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -40,6 +42,7 @@ local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
+
 -- Environment Compatibility
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = nil
@@ -51,11 +54,13 @@ do
         PlayerGui = CoreGui
     end
 end
+
 -- ScreenGui Container
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "DegradUI_" .. HttpService:GenerateGUID(false):sub(1, 8)
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
 -- Dynamic Safe Environment Protection
 local function SafeParent(gui)
     local success, err = pcall(function()
@@ -65,6 +70,7 @@ local function SafeParent(gui)
         gui.Parent = PlayerGui
     end
 end
+
 -- Standard Icons Mapping (Lucide Fallbacks / High Quality Assets)
 local Icons = {
     home = "rbxassetid://10723424505",
@@ -84,6 +90,7 @@ local Icons = {
     rewind = "rbxassetid://10723381677",
     check = "rbxassetid://10723347639"
 }
+
 local function GetIcon(iconInput)
     if type(iconInput) == "number" then
         return "rbxassetid://" .. tostring(iconInput)
@@ -97,6 +104,7 @@ local function GetIcon(iconInput)
     end
     return Icons.settings -- Default fallback
 end
+
 -- Tween Helper
 local function QuickTween(instance, duration, properties, easingStyle, easingDir)
     local tweenInfo = TweenInfo.new(
@@ -108,6 +116,7 @@ local function QuickTween(instance, duration, properties, easingStyle, easingDir
     tween:Play()
     return tween
 end
+
 -- Smooth Drag Support
 local function MakeDraggable(dragFrame, targetFrame, canDragCheck)
     local dragging = false
@@ -151,6 +160,7 @@ local function MakeDraggable(dragFrame, targetFrame, canDragCheck)
         end
     end)
 end
+
 -- Configuration Save/Load Logic
 local function SaveConfig()
     if not Degrad.SaveSettings then return end
@@ -174,6 +184,7 @@ local function SaveConfig()
         end
     end)
 end
+
 local function LoadConfig(elementsMap)
     if not Degrad.SaveSettings then return end
     local path = Degrad.ConfigFolder .. "/" .. Degrad.ConfigFile
@@ -207,6 +218,7 @@ local function LoadConfig(elementsMap)
         end
     end
 end
+
 -- ========================================================================
 -- MODERNIZED NOTIFICATIONS SYSTEM
 -- ========================================================================
@@ -218,11 +230,13 @@ NotificationContainer.BackgroundTransparency = 1
 NotificationContainer.BorderSizePixel = 0
 NotificationContainer.ClipsDescendants = false
 SafeParent(NotificationContainer)
+
 local UIListLayout_Notify = Instance.new("UIListLayout")
 UIListLayout_Notify.Parent = NotificationContainer
 UIListLayout_Notify.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout_Notify.Padding = UDim.new(0, 12)
 UIListLayout_Notify.VerticalAlignment = Enum.VerticalAlignment.Bottom
+
 function Degrad:Notify(options)
     local titleText = options.Title or "Notification"
     local contentText = options.Content or "Content here"
@@ -347,15 +361,16 @@ function Degrad:Notify(options)
         end
     end)
 end
+
 -- ========================================================================
 -- MAIN WINDOW SYSTEM
 -- ========================================================================
 function Degrad:CreateWindow(options)
     local windowName = options.Name or "Degrad"
-    local showText = options.ShowText or "Open Degrad"
+    local mode = options.Mode or (UserInputService.TouchEnabled and "Mobile" or "PC")
     local loadingTitle = options.LoadingTitle or "Degrad Suite"
     local loadingSubtitle = options.LoadingSubtitle or "Modernist Architecture"
-    local keybind = options.ToggleUIKeybind or "K"
+    local keybind = options.ToggleUIKeybind or "LeftControl"
     
     -- Config setting details
     if options.ConfigurationSaving then
@@ -411,9 +426,9 @@ function Degrad:CreateWindow(options)
     MobileIconLabel.BackgroundTransparency = 1
     MobileIconLabel.Parent = MobileBtn
     
-    -- Check if touch device or mobile toggle enabled
-    if UserInputService.TouchEnabled or options.MobileToggle then
-        MobileBtn.Visible = true
+    -- Visibilidad inicial del botón flotante (solo en modo Mobile si la UI está cerrada)
+    if mode == "Mobile" then
+        MobileBtn.Visible = not Degrad.Open
     end
     
     -- Smooth Mobile Button Dragging & Click Magnitude check
@@ -586,7 +601,14 @@ function Degrad:CreateWindow(options)
         btn.MouseButton1Click:Connect(callback)
         return btn
     end
-    local MinimizeBtn = CreateHeaderButton("−", 0, nil, ToggleMinimize)
+
+    local MinimizeBtn = CreateHeaderButton("−", 0, nil, function()
+        if mode == "Mobile" then
+            ToggleUI()
+        else
+            ToggleMinimize()
+        end
+    end)
     local MaximizeBtn = CreateHeaderButton("⬜", 30, nil, ToggleMaximize)
     local CloseBtn = CreateHeaderButton("✕", 60, Color3.fromRGB(180, 50, 50), function()
         Degrad:Destroy()
@@ -767,11 +789,21 @@ function Degrad:CreateWindow(options)
                 MainFrame.Visible = false
             end
         end)
+
+        if mode == "Mobile" then
+            MobileBtn.Visible = not Degrad.Open
+        end
     end
+    
+    MobileBtn.MouseButton1Click:Connect(function()
+        if not wasDragged then
+            ToggleUI()
+        end
+    end)
     
     -- Keybind to toggle
     UserInputService.InputBegan:Connect(function(input, processed)
-        if not processed then
+        if not processed and mode == "PC" then
             local matched = false
             if type(keybind) == "string" and input.KeyCode.Name == keybind then
                 matched = true
@@ -1335,6 +1367,126 @@ function Degrad:CreateWindow(options)
             end
             
             return InputAPI
+        end
+        
+        -- ====================================================================
+        -- 6.5 LIST BUTTON (NEW)
+        -- ====================================================================
+        function TabAPI:CreateList(listOptions)
+            local name = listOptions.Name or "List"
+            local items = listOptions.Items or {} -- Array of {Name = string, Callback = function}
+            
+            local Elem, ElemLabel = ElementShell(name)
+            Elem.ClipsDescendants = true
+            
+            local Arrow = Instance.new("ImageLabel")
+            Arrow.Size = UDim2.new(0, 16, 0, 16)
+            Arrow.Position = UDim2.new(1, -26, 0, 11)
+            Arrow.Image = "rbxassetid://10723347519"
+            Arrow.ImageColor3 = Degrad.Theme.TextMuted
+            Arrow.BackgroundTransparency = 1
+            Arrow.Parent = Elem
+            
+            local ClickBtn = Instance.new("TextButton")
+            ClickBtn.Size = UDim2.new(1, 0, 0, 38)
+            ClickBtn.BackgroundTransparency = 1
+            ClickBtn.Text = ""
+            ClickBtn.Parent = Elem
+            
+            local ItemsHolder = Instance.new("Frame")
+            ItemsHolder.Size = UDim2.new(1, -20, 0, 0)
+            ItemsHolder.Position = UDim2.new(0, 10, 0, 42)
+            ItemsHolder.BackgroundTransparency = 1
+            ItemsHolder.BorderSizePixel = 0
+            ItemsHolder.ClipsDescendants = true
+            ItemsHolder.Parent = Elem
+            
+            local ItemsList = Instance.new("UIListLayout")
+            ItemsList.Padding = UDim.new(0, 4)
+            ItemsList.Parent = ItemsHolder
+            
+            local open = false
+            
+            local function RenderList()
+                for _, child in ipairs(ItemsHolder:GetChildren()) do
+                    if child:IsA("TextButton") then child:Destroy() end
+                end
+                
+                for _, item in ipairs(items) do
+                    local ItemBtn = Instance.new("TextButton")
+                    ItemBtn.Size = UDim2.new(1, 0, 0, 28)
+                    ItemBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+                    ItemBtn.BorderSizePixel = 0
+                    ItemBtn.Text = ""
+                    ItemBtn.Parent = ItemsHolder
+                    
+                    local ItemCorner = Instance.new("UICorner")
+                    ItemCorner.CornerRadius = UDim.new(0, 4)
+                    ItemCorner.Parent = ItemBtn
+                    
+                    local ItemStroke = Instance.new("UIStroke")
+                    ItemStroke.Thickness = 1
+                    ItemStroke.Color = Color3.fromRGB(35, 35, 35)
+                    ItemStroke.Parent = ItemBtn
+                    
+                    local ItemLabel = Instance.new("TextLabel")
+                    ItemLabel.Size = UDim2.new(1, -10, 1, 0)
+                    ItemLabel.Position = UDim2.new(0, 10, 0, 0)
+                    ItemLabel.Text = item.Name
+                    ItemLabel.TextColor3 = Degrad.Theme.TextMuted
+                    ItemLabel.TextSize = 12
+                    ItemLabel.Font = Degrad.Theme.Font
+                    ItemLabel.TextXAlignment = Enum.TextXAlignment.Left
+                    ItemLabel.BackgroundTransparency = 1
+                    ItemLabel.Parent = ItemBtn
+                    
+                    ItemBtn.MouseEnter:Connect(function()
+                        QuickTween(ItemBtn, 0.2, {BackgroundColor3 = Color3.fromRGB(30, 30, 30)})
+                        QuickTween(ItemLabel, 0.2, {TextColor3 = Degrad.Theme.Text})
+                    end)
+                    ItemBtn.MouseLeave:Connect(function()
+                        QuickTween(ItemBtn, 0.2, {BackgroundColor3 = Color3.fromRGB(20, 20, 20)})
+                        QuickTween(ItemLabel, 0.2, {TextColor3 = Degrad.Theme.TextMuted})
+                    end)
+                    
+                    ItemBtn.MouseButton1Click:Connect(function()
+                        task.spawn(function()
+                            local success, err = pcall(item.Callback)
+                            if not success then warn("[Degrad List Error]: " .. tostring(err)) end
+                        end)
+                    end)
+                end
+            end
+            
+            local function ToggleList()
+                open = not open
+                local contentHeight = ItemsList.AbsoluteContentSize.Y + 10
+                local targetHeight = open and (42 + contentHeight) or 38
+                
+                QuickTween(Arrow, 0.25, {Rotation = open and 180 or 0})
+                QuickTween(Elem, 0.25, {Size = UDim2.new(1, -10, 0, targetHeight)})
+                
+                if open then
+                    ItemsHolder.Size = UDim2.new(1, -20, 0, contentHeight)
+                else
+                    ItemsHolder.Size = UDim2.new(1, -20, 0, 0)
+                end
+            end
+            
+            ClickBtn.MouseButton1Click:Connect(ToggleList)
+            RenderList()
+            
+            local ListAPI = {}
+            function ListAPI:Refresh(newItems)
+                items = newItems
+                RenderList()
+                if open then
+                    local contentHeight = ItemsList.AbsoluteContentSize.Y + 10
+                    Elem.Size = UDim2.new(1, -10, 0, 42 + contentHeight)
+                    ItemsHolder.Size = UDim2.new(1, -20, 0, contentHeight)
+                end
+            end
+            return ListAPI
         end
         
         -- ====================================================================
@@ -2037,4 +2189,5 @@ function Degrad:CreateWindow(options)
     
     return WindowAPI
 end
+
 return Degrad
