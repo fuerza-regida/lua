@@ -386,9 +386,39 @@ function Degrad:CreateWindow(options)
     local ElementsRegistry = {}
     
     -- Pre-declaración de componentes para que ToggleMinimize y ToggleUI tengan acceso
-    local Sidebar, ContentHolder, HeaderDivider, MinimizeBtn, ToggleUI
+    local Sidebar, ContentHolder, HeaderDivider, MinimizeBtn
     local isMinimized = false
     local isMaximized = false
+
+    -- Toggle UI Visibility Mechanics (Defined early to be accessible by header buttons)
+    local function ToggleUI()
+        Degrad.Open = not Degrad.Open
+        local targetTrans = Degrad.Open and 0 or 1
+        
+        MainFrame.Active = Degrad.Open -- Evita bloquear clics en el botón flotante mientras se cierra
+        MainFrame.Visible = true
+        local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+        
+        -- Scaling Transition
+        local sizeTween = TweenService:Create(MainFrame, tweenInfo, {
+            Size = Degrad.Open and (isMaximized and maximizedSize or normalSize) or UDim2.new(0, 480, 0, 330),
+            Position = Degrad.Open and (isMaximized and maximizedPos or normalPos) or UDim2.new(0.5, -240, 0.5, -165)
+        })
+        sizeTween:Play()
+        
+        -- Smooth Group Transparency Tween
+        QuickTween(MainFrame, 0.25, {GroupTransparency = targetTrans})
+        
+        sizeTween.Completed:Connect(function()
+            if not Degrad.Open then
+                MainFrame.Visible = false
+            end
+        end)
+
+        if mode == "Mobile" then
+            MobileBtn.Visible = not Degrad.Open
+        end
+    end
     
     -- Setup Core GUI Screen
     ScreenGui.Parent = PlayerGui
@@ -769,36 +799,6 @@ function Degrad:CreateWindow(options)
         fadeOut.Completed:Wait()
         LoadingFrame:Destroy()
     end)
-    
-    -- Toggle UI Visibility Mechanics
-    ToggleUI = function()
-        Degrad.Open = not Degrad.Open
-        local targetTrans = Degrad.Open and 0 or 1
-        
-        MainFrame.Active = Degrad.Open -- Evita bloquear clics en el botón flotante mientras se cierra
-        MainFrame.Visible = true
-        local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-        
-        -- Scaling Transition
-        local sizeTween = TweenService:Create(MainFrame, tweenInfo, {
-            Size = Degrad.Open and (isMaximized and maximizedSize or normalSize) or UDim2.new(0, 480, 0, 330),
-            Position = Degrad.Open and (isMaximized and maximizedPos or normalPos) or UDim2.new(0.5, -240, 0.5, -165)
-        })
-        sizeTween:Play()
-        
-        -- Smooth Group Transparency Tween
-        QuickTween(MainFrame, 0.25, {GroupTransparency = targetTrans})
-        
-        sizeTween.Completed:Connect(function()
-            if not Degrad.Open then
-                MainFrame.Visible = false
-            end
-        end)
-
-        if mode == "Mobile" then
-            MobileBtn.Visible = not Degrad.Open
-        end
-    end
     
     MobileBtn.MouseButton1Click:Connect(function()
         if not wasDragged then
